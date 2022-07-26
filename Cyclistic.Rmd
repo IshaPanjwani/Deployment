@@ -1,0 +1,257 @@
+---
+title: 'Cyclistic: Bike-share Company'
+output:
+  pdf_document: default
+  html_document: default
+By: Isha Panjwani
+Date: June 29, 2022
+Case Study: How to increase annual memberships for bike-share company?
+---
+
+### Background
+
+Cyclistic introduced a popular bike-share program in 2016. The initiative has expanded since then to include a fleet of 5,824 bicycles that are geo-tracked and locked into a system of 692 stations throughout Chicago.
+
+Up to this point, Cyclistic's marketing approach focused on raising public awareness and appealing to a wide range of consumer groups. The price plans' flexibility, which included single-ride passes, full-day passes, and annual memberships, was one strategy that assisted in making these things possible. Casual riders are those who buy one-ride or all-day passes from the company. Cyclistic members are customers who purchase annual memberships.
+
+### Purpose of Data Analysis
+
+This report will focus on solving business problem: "What is the best approach for upgrading casual Cyclistic members into annual members?"
+
+We would be looking deeper into the raw data to determine how casual and annual members use Cyclistic differently.
+
+### Stakeholders and intended audience
+
+Important stakeholders involved in overall analysis are: \* Director of Marketing\
+\* Cyclistic Marketing Team\
+\* Cyclistic Executive Team\
+\* Cyclistic Users
+
+### Data Sources
+
+User data from January 2021 through December 2021 has been made public. Every ride logged by Cyclistic customers is included in each data collection, which is in csv format. Motivate International Inc. and the city of Chicago have granted the public access to this data under a license, which is available online. To ensure privacy, all user personal information has been cleaned.
+
+### Cleaning, Visualizing and Documentation of Data Analysis
+
+#### Tools for Analysis
+
+Considering the size of the data and visualization needed to complete this analysis, R Programming is used.
+
+```{r}
+#Load the necessary libraries that will be utilized for the project
+library(tidyverse)
+library(lubridate)
+library(janitor)
+library(dplyr)
+library(ggplot2)
+library(readr)
+```
+
+Load all the data and combine all the data sets
+
+```{r}
+  trip21_June <- read.csv("C:\\Users\\user\\OneDrive\\Desktop\\Google Data Analytics\\Portfolio Project Practice\\Capstone Project\\Data in CSV form\\June2021.csv")
+trip21_July <- read.csv("C:\\Users\\user\\OneDrive\\Desktop\\Google Data Analytics\\Portfolio Project Practice\\Capstone Project\\Data in CSV form\\July2021.csv")
+trip21_Aug <- read.csv("C:\\Users\\user\\OneDrive\\Desktop\\Google Data Analytics\\Portfolio Project Practice\\Capstone Project\\Data in CSV form\\Aug2021.csv")
+trip21_Sept <- read.csv("C:\\Users\\user\\OneDrive\\Desktop\\Google Data Analytics\\Portfolio Project Practice\\Capstone Project\\Data in CSV form\\Sept2021.csv")
+trip21_Oct <- read.csv("C:\\Users\\user\\OneDrive\\Desktop\\Google Data Analytics\\Portfolio Project Practice\\Capstone Project\\Data in CSV form\\Oct2021.csv")
+trip21_Nov <- read.csv("C:\\Users\\user\\OneDrive\\Desktop\\Google Data Analytics\\Portfolio Project Practice\\Capstone Project\\Data in CSV form\\Nov2021.csv")
+trip21_Dec <- read.csv("C:\\Users\\user\\OneDrive\\Desktop\\Google Data Analytics\\Portfolio Project Practice\\Capstone Project\\Data in CSV form\\Dec2021.csv")
+trip22_Jan <- read.csv("C:\\Users\\user\\OneDrive\\Desktop\\Google Data Analytics\\Portfolio Project Practice\\Capstone Project\\Data in CSV form\\Jan2022.csv")
+trip22_Feb <- read.csv("C:\\Users\\user\\OneDrive\\Desktop\\Google Data Analytics\\Portfolio Project Practice\\Capstone Project\\Data in CSV form\\Feb2022.csv")
+trip22_Mar <- read.csv("C:\\Users\\user\\OneDrive\\Desktop\\Google Data Analytics\\Portfolio Project Practice\\Capstone Project\\Data in CSV form\\Mar2022.csv")
+trip22_Apr <- read.csv("C:\\Users\\user\\OneDrive\\Desktop\\Google Data Analytics\\Portfolio Project Practice\\Capstone Project\\Data in CSV form\\April2022.csv")
+trip22_May <- read.csv("C:\\Users\\user\\OneDrive\\Desktop\\Google Data Analytics\\Portfolio Project Practice\\Capstone Project\\Data in CSV form\\May2022.csv")
+```
+
+Combine Every data set to consolidate analysis
+
+```{r}
+trips21_22 <- rbind(trip21_June, trip21_July, trip21_Aug, trip21_Sept, trip21_Oct, trip21_Nov, trip21_Dec, trip22_Jan, trip22_Feb, trip22_Mar, trip22_Apr, trip22_May)
+```
+
+View newly created dataset
+
+```{r}
+View(trips21_22)
+```
+
+Only keeping the important columns
+
+```{r}
+trips21_22 <- trips21_22 %>% 
+  select(c(ride_id, rideable_type, started_at, ended_at, member_casual))
+```
+
+Viewing current table
+
+```{r}
+View(trips21_22)
+```
+
+Review of data and its parameters
+
+```{r}
+colnames(trips21_22) #number of columns
+nrow(trips21_22) #number of rows
+dim(trips21_22) #dimension of the table
+head(trips21_22, 6) #first 6 rows of table
+str(trips21_22) #list of columns and data types
+summary(trips21_22) #date and dimension 
+```
+
+Additional columns for date and time
+
+```{r}
+trips21_22$date <- as.Date(trips21_22$started_at)
+trips21_22$month <- format(as.Date(trips21_22$date), "%m")
+trips21_22$day <- format(as.Date(trips21_22$date), "%d")
+trips21_22$year <- format(as.Date(trips21_22$date), "%Y")
+trips21_22$day_of_week <- format(as.Date(trips21_22$date), "%A")
+trips21_22$time <- format(trips21_22$started_at, format = "%H:%M")
+trips21_22$time <- as.POSIXct(trips21_22$time, format = "%H:%M")
+```
+
+Calculated Field for Time of Each Ride
+
+```{r}
+trips21_22$length_of_ride <- (as.double(difftime(trips21_22$ended_at, trips21_22$started_at)))/60
+```
+
+Checking data structure of the table columns
+```{r}
+str(trips21_22)
+```
+
+Alter data type for time
+
+```{r}
+trips21_22$length_of_ride <- as.numeric(as.character(trips21_22$length_of_ride))
+```
+
+Eliminating blank entries from the table
+```{r}
+trips21_22 = subset(trips21_22, select = -c(time))
+```
+
+```{r}
+trips21_22 <- trips21_22[!(trips21_22$length_of_ride < 0),]
+```
+
+View updated table
+
+```{r}
+View(trips21_22)
+```
+
+Observe newly created column for backup dataset
+```{r}
+summary(trips21_22$length_of_ride)
+```
+
+Analyze data
+Calculating mean, median, max, min- figures to determine statistical speed of membership type
+```{r}
+aggregate(trips21_22$length_of_ride ~ trips21_22$member_casual, FUN = mean)
+aggregate(trips21_22$length_of_ride ~ trips21_22$member_casual, FUN = median)
+aggregate(trips21_22$length_of_ride ~ trips21_22$member_casual, FUN = max)
+aggregate(trips21_22$length_of_ride ~ trips21_22$member_casual, FUN = min)
+```
+Order by days of the week
+```{r}
+trips21_22$day_of_week <- ordered(trips21_22$day_of_week, levels=c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))
+```
+
+Review the table 
+```{r}
+View(trips21_22)
+```
+
+Create a weekday field as well as view column specifics
+```{r}
+number_of_rides = trips21_22 %>% 
+  mutate(day_of_week = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, day_of_week) %>% 
+  summarize(number_of_rides = n())
+```
+
+
+View Data 
+```{r}
+View(number_of_rides)
+```
+
+
+Data Visualizations
+
+(i) Rides per day visual
+
+```{r}
+trips21_22$day_of_week <- format(as.Date(trips21_22$date), "%A")
+trips21_22$day_of_week <- ordered(trips21_22$day_of_week, levels=c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))
+trips21_22 %>% 
+  group_by(member_casual, day_of_week) %>% 
+  summarize(number_of_rides = n()) %>% 
+  #order_by(day_of_week) %>% 
+  #arrange(day_of_week) %>% 
+  ggplot(aes(x=day_of_week, y = number_of_rides, fill = member_casual)) + geom_col(position = "dodge") + labs(x = "Day of the week", y = "Total number of rides", title = "Rides per day", fill = "Type of membership") + scale_y_continuous(breaks = c(250000, 400000, 550000), labels = c("250K", "400K", "550K"))
+```
+The rides per day of week shows casual riders peak on Saturday and Sunday while members peak on weekdays. This implies that members majorly use Cyclistic for commutes and not leisure.
+
+
+(ii) Rides per month visual
+```{r}
+trips21_22 %>% 
+  group_by(member_casual, month) %>% 
+  summarize(total_rides = n(), `average_duration_(mins)` = mean(length_of_ride)) %>% 
+  arrange(member_casual) %>% 
+  ggplot(aes(x= month, y= total_rides, fill = member_casual)) + geom_col(position = "dodge") + labs(x = "Month", y = "Total number of rides", title = "Rides per month", fill = "Type of membership") + scale_y_continuous(breaks = c(100000, 200000, 300000, 400000), labels = c("100K", "200K", "300K", "400K")) + theme(axis.text.x = element_text(angle = 45))
+```
+
+The rides per month show that casual riders were a lot more active during the summer months than the long-term. Conversly, the winter months show very little activity on the part of the casual users. The long-term users are more active in the winter and spring months. 
+
+
+(iii) Type of the bikes rented
+
+```{r}
+trips21_22 %>% 
+  ggplot(aes(x = rideable_type, fill = member_casual)) + geom_bar(position = "dodge") +
+  labs(x = "Tyoe of bike", y = "Number of rentals", title = "Most rented bikes", fill = "Type of membership") + scale_y_continuous(breaks = c(500000, 1000000, 1500000), labels = c("500K", "1M", "1.5M"))
+```
+
+The breakdown of which type of bike is the most popular among either type of user. Showing among the two types of bikes classic and electric. both types of memberships prefer using the classic bike more so than the electric bike. The long-term members are also seen to be of the two types favors the classic bike.
+
+(iv) Average time spend while riding bike by individuals of each membership type 
+
+```{r}
+trips21_22 %>% 
+  mutate(day_of_week = wday(started_at, label = TRUE)) %>%
+  group_by(member_casual, day_of_week) %>% 
+  summarize(number_of_rides = n(), average_duration = mean(length_of_ride)) %>% 
+  arrange(member_casual, day_of_week) %>% 
+  ggplot(aes(x = day_of_week, y = average_duration, fill = member_casual)) + geom_col(position = "dodge") + labs(x = "Days of the week", y = "Average duration- Hrs", title = "Average ride time daily", fill = "Type of membership")
+```
+
+The average ride time shows a stark difference between the casuals and members. Casuals overall spend more time using the service than their full time member counter-parts
+
+##key takeaways
+
+
+Casual users tended to ride more so in the warmer months of Chicago, namely June- August. Their participation exceeded that of the long term members.
+
+To further that the Casual demographic spent on average a lot longer time per ride than their long-term counter-parts.
+
+The days of the week also further shows that causal riders prefer to use the service during the weekends as their usage peaked then. The long term members conversly utilised the service more-so throughout the typical work week i.e (Monday- friday)
+
+Long term riders tended to stick more so to classic bikes as opposed to the docked or electric bikes.
+
+
+##Recommendations
+
+This report recommends the following:
+
+Introducing plans thats may be more appealing to casuals for the summer months. This marketing should be done during the winter months in preperation.
+
+The casual users might be more interested in a memebrship option that allows for per-use balance card. Alternatively, the existing payment structure may be altered in order to make single-use more costly to the casual riders as well as lowering the long-term membership rate.
+
+Membership rates specifically for the warmer months as well as for those who only ride on the weekends would assist in targeting the casual riders more specifically. 
